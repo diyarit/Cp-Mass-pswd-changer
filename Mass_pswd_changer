@@ -1,0 +1,28 @@
+#! /usr/bin/env bash
+
+# This script resets ALL cPanel user account passwords to random 16-digit 
+# passwords.  All output is put into a text file called "new-pass.txt" in the directory
+# where this script is being run.
+# Once complete, it then syncs that new password with MySQL and the FTP databases.
+
+# Make sure it's running as Root.
+if [ "$EUID" -ne 0 ] 
+    then echo "Please run as root"
+    exit 1
+fi
+
+# You have to set this or the /scripts/realchpass won't run.
+export ALLOW_PASSWORD_CHANGE=1
+
+# Get the cPanel user list.
+ls -1 /var/cpanel/users | while read user; do
+    pass=`</dev/urandom tr -dc "A-Za-z0-9*-/+.*=_\|\\#" | head -c16`
+    echo -e "$user  -->  $pass" >> new-pass.txt
+    /scripts/realchpass $user $pass
+    /scripts/ftpupdate
+done
+
+# Reset the cPanel system variable back.
+export ALLOW_PASSWORD_CHANGE=0
+
+exit
